@@ -22,6 +22,13 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Feed extends BaseEntity {
 
+    @Entity
+    @Table(indexes = {@Index(columnList = "title"), @Index(columnList = "techStack")})
+    public class Feed {
+        // 엔티티 필드 및 메서드
+    }
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
