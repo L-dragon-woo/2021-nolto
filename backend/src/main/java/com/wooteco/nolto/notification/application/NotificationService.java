@@ -1,65 +1,32 @@
-package com.wooteco.nolto.notification.application;
+package com.wooteco.nolto.notification.service;
 
-import com.wooteco.nolto.exception.BadRequestException;
-import com.wooteco.nolto.exception.ErrorType;
-import com.wooteco.nolto.exception.NotFoundException;
-import com.wooteco.nolto.feed.domain.Comment;
-import com.wooteco.nolto.feed.domain.Feed;
 import com.wooteco.nolto.notification.domain.Notification;
-import com.wooteco.nolto.notification.domain.NotificationRepository;
+import com.wooteco.nolto.notification.domain.repository.NotificationRepository;
 import com.wooteco.nolto.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Transactional
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void save(NotificationEvent notificationEvent) {
-        Notification notification = notificationEvent.toEntity();
-        if (notificationEvent.validatePublisher()) {
-            notificationRepository.save(notification);
-        }
+    public void sendNotification(User user, String message) {
+        Notification notification = new Notification(user, message);
+        notificationRepository.save(notification);
     }
 
-    public void delete(User user, Long notificationId) {
+    public List<Notification> getUnreadNotifications(User user) {
+        return notificationRepository.findByUserAndIsReadFalse(user);
+    }
+
+    public void markAsRead(Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new NotFoundException(ErrorType.NOTIFICATION_NOT_FOUND));
-        if (!notification.isListener(user)) {
-            throw new BadRequestException(ErrorType.UNAUTHORIZED_DELETE_NOTIFICATION);
-        }
-        notificationRepository.delete(notification);
-    }
-
-    public void deleteAllByListener(User user) {
-        notificationRepository.deleteAllByListener(user);
-    }
-
-    public void deleteNotificationRelatedToFeed(NotificationFeedDeleteEvent notificationFeedDeleteEvent) {
-        Feed feed = notificationFeedDeleteEvent.getFeed();
-        notificationRepository.deleteAllByFeed(feed);
-    }
-
-    public void deleteNotificationRelatedToComment(NotificationCommentDeleteEvent notificationCommentDeleteEvent) {
-        Comment comment = notificationCommentDeleteEvent.getComment();
-        notificationRepository.deleteAllByComment(comment);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Notification> findAllByUser(User user) {
-        return notificationRepository.findAllByListener(user);
-    }
-
-    @Transactional(readOnly = true)
-    public long findNotificationCount(User user) {
-        return notificationRepository.countByListener(user);
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+        notification.markAsRead();
+        notificationRepository.save(notification);
     }
 }
